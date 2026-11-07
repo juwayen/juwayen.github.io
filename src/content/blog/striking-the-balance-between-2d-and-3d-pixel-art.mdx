@@ -1,0 +1,819 @@
+---
+title: 'Striking the Balance Between 2D & 3D Pixel Art'
+description: 'How to get the look of 2D pixel art with the benefits of a 3D engine.'
+pubDate: 'Oct 13 2026'
+heroImage: '../../assets/captures/showcase/showcase_still.png'
+---
+
+import placeholderImage from '../../assets/placeholder.png';
+
+import superMarioBrosScreenshot from '../../assets/screenshots/super_mario_bros.png';
+import stardewValleyScreenshot from '../../assets/screenshots/stardew_valley.png';
+import eastwardScreenshot from '../../assets/screenshots/eastward.png';
+import deadCellsScreenshot from '../../assets/screenshots/dead_cells.png';
+import aShortHikeScreenshot from '../../assets/screenshots/a_short_hike.png';
+import octopathTravellerScreenshot from '../../assets/screenshots/octopath_traveller.png';
+import graveyardKeeper2Screenshot from '../../assets/screenshots/graveyard_keeper_2.png';
+
+import shadowBlobCapture from '../../assets/captures/shadow_blob/shadow_blob.png'
+import shadowProjectedLowCapture from '../../assets/captures/shadow_projected/shadow_projected_low_skew.png'
+import shadowProjectedHighCapture from '../../assets/captures/shadow_projected/shadow_projected_high_skew.png'
+import shadow3dCapture from '../../assets/captures/shadow_3d/shadow_3d.webp'
+import shadow3dPixelatedCapture from '../../assets/captures/shadow_3d_pixelated/shadow_3d_pixelated.webp'
+import movement2dVs3dCapture from '../../assets/captures/movement_2d_vs_3d/movement_2d_vs_3d.webp'
+import diffuseAndDepthCapture from '../../assets/captures/pixelator/diffuse_and_depth_texture.png'
+import quadMeshCapture from '../../assets/captures/pixelated_old/quad_mesh.png'
+import paletteOffOnCapture from '../../assets/captures/movement_2d_vs_3d/palette_off_vs_on.png'
+import paletteSwappingCapture from '../../assets/captures/palette/palette_swapping.webp'
+import normalCapture from '../../assets/captures/pixelator/normal_texture.png'
+import normalOffOnCapture from '../../assets/captures/pixelated_old/normal_off_vs_on.webp'
+import shadowMeshCapture from '../../assets/captures/casting_shadow/shadow_mesh.png'
+import shadowSmoothCapture from '../../assets/captures/casting_shadow/shadow_smooth.png'
+import shadowPixelatedCapture from '../../assets/captures/casting_shadow/shadow_pixelated.png'
+import displacingCapture from '../../assets/captures/displacement/displacing.webp'
+import displacedShadowCapture from '../../assets/captures/displacement/shadow.webp'
+import animatedSpriteCapture from '../../assets/captures/animation/animated_sprite.webp'
+import showcaseCapture from '../../assets/captures/showcase/showcase.webp'
+
+import optimizationVramCrop from '../../assets/crops/optimization_vram.png'
+
+export const detailsStyle = { marginTop: '-0.5rem', marginBottom: '2rem' };
+
+
+The technique described here was implemented in Godot, but it can be applied in any standard 3D engine.
+
+## Preamble
+
+Pixel art began as a necessity, born from the hardware limitations of its time.
+<figure>
+	<img
+		src={superMarioBrosScreenshot.src}
+		width={superMarioBrosScreenshot.width * 2}
+		height={superMarioBrosScreenshot.height * 2}
+		alt="A screenshot of Super Mario Bros."
+	/>
+	<figcaption>Super Mario Bros. <a href="https://en.wikipedia.org/wiki/Nintendo_Entertainment_System#Technical_specifications">The NES had a standard display resolution of 256×240 pixels, and each sprite tile could use just three colors plus transparency.</a></figcaption>
+</figure>
+
+Nowadays pixel art is mostly a stylistic choice.
+
+<figure>
+	<img
+		src={stardewValleyScreenshot.src}
+		width={stardewValleyScreenshot.width * 2}
+		height={stardewValleyScreenshot.height * 2}
+		alt="A screenshot of Stardew Valley."
+	/>
+	<figcaption>Stardew Valley. <a href="https://mentalnerd.com/blog/getting-started-pixel-art-interview/">Its creator, Eric Barone, wanted to "recapture that special feeling that the old games [gave him]."</a></figcaption>
+</figure>
+
+Even so, it remains a demanding craft. Every frame of every animation, for every object in every viewing direction, has to be drawn by hand.
+
+<figure>
+	<img
+		src={eastwardScreenshot.src}
+		width={eastwardScreenshot.width}
+		height={eastwardScreenshot.height}
+		alt="A screenshot of Eastward."
+	/>
+	<figcaption>Eastward. <a href="https://filmstories.co.uk/gaming/eastward-preview-a-promising-pixel-post-apocalypse/">According to designer Ye Feng, around 70,000 frames of hand-drawn animations had been created for the game by the time of its preview.</a></figcaption>
+</figure>
+
+To ease that burden, many developers build animated 3D models and render them out as pixelated spritesheets for certain assets.
+
+<figure>
+	<img
+		src={deadCellsScreenshot.src}
+		width={deadCellsScreenshot.width * 2}
+		height={deadCellsScreenshot.height * 2}
+		alt="A screenshot of Dead Cells."
+	/>
+	<figcaption>Dead Cells. <a href="https://www.gamedeveloper.com/production/art-design-deep-dive-using-a-3d-pipeline-for-2d-animation-in-i-dead-cells-i-">Motion Twin artist Thomas Vasseur has said he used a 3D pipeline because he was working alone and couldn't hand-draw all the animations quickly enough to ship the game.</a></figcaption>
+</figure>
+
+Others go a step further and render the entire 3D scene at a low internal resolution, then upscale it with nearest-neighbor (point) filtering so the pixels stay sharp.
+
+<figure>
+	<img
+		src={aShortHikeScreenshot.src}
+		width={aShortHikeScreenshot.width * 2}
+		height={aShortHikeScreenshot.height * 2}
+		alt="A screenshot of A Short Hike."
+	/>
+	<figcaption>A Short Hike. <a href="https://www.twitch.tv/videos/569867346?t=02h34m36s">Creator Adam Robinson-Yu has described rendering the world to a tiny render texture, then having a second Unity camera upscale it with point filtering.</a></figcaption>
+</figure>
+
+Some embrace the contrast instead, deliberately pairing 2D sprites with 3D environments and letting each dimension keep its own look.
+
+<figure>
+	<img
+		src={octopathTravellerScreenshot.src}
+		width={octopathTravellerScreenshot.width}
+		height={octopathTravellerScreenshot.height}
+		alt="A screenshot of Octopath Traveler."
+	/>
+	<figcaption>Octopath Traveler. <a href="https://www.unrealengine.com/spotlights/octopath-traveler-s-hd-2d-art-style-and-story-make-for-a-jrpg-dream-come-true">Producer Masashi Takahashi has explained that the team chose Unreal Engine 4 for its strength with 3D environments and fused it with 2D pixel characters, giving rise to the "HD-2D" style.</a></figcaption>
+</figure>
+
+Sprites in a 3D scene do not get the depth, dynamic lighting, and accurate shadows that 3D objects get for free, so some games pair them with real 3D models.
+
+<figure>
+	<img
+		src={graveyardKeeper2Screenshot.src}
+		width={graveyardKeeper2Screenshot.width}
+		height={graveyardKeeper2Screenshot.height}
+		alt="A screenshot of Graveyard Keeper 2."
+	/>
+	<figcaption>Graveyard Keeper 2. <a href="https://x.com/SlavaCherk/status/2100331777243910268">On top of the pixel art, the team used real 3D models for almost every object to get realistic lighting and shadows, but "it was kind of a nightmare to model and to build", according to Slava Cherk.</a></figcaption>
+</figure>
+
+I wanted the look of 2D pixel art, with the advantages of 3D engines, but without doubling the workload.
+
+## 2D or 3D engine?
+
+I chose to emulate 2D in a 3D engine rather than the reverse, since it's much easier to hide a dimension than to fake one.
+
+Shadows show the difference well. The standard technique in 2D pixel art games is the blob shadow, a semi-transparent dark ellipse placed beneath an object.
+
+<figure>
+	<img
+		src={shadowBlobCapture.src}
+		width={shadowBlobCapture.width * 4}
+		height={shadowBlobCapture.height * 4}
+		alt="A sprite with a blob shadow beneath it."
+	/>
+	<figcaption>A blob shadow. It sits under the sprite no matter where the light is.</figcaption>
+</figure>
+
+I, however, wanted shadows that respond to the light, so the next step up is the projected sprite shadow. It takes a copy of the sprite, tints it dark, and skews it across the ground plane to approximate the light direction.
+
+<figure>
+	<img
+		src={shadowProjectedLowCapture.src}
+		width={shadowProjectedLowCapture.width * 4}
+		height={shadowProjectedLowCapture.height * 4}
+		alt="A sprite with a projected shadow."
+	/>
+	<figcaption>A projected sprite shadow. The silhouette follows the shape of the sprite.</figcaption>
+</figure>
+
+This only holds up when the light comes from roughly in front of or behind the sprite. If the light moves to the side, the skewed copy collapses into a thin sliver.
+
+<figure>
+	<img
+		src={shadowProjectedHighCapture.src}
+		width={shadowProjectedHighCapture.width * 4}
+		height={shadowProjectedHighCapture.height * 4}
+		alt="The same sprite lit from the side."
+	/>
+	<figcaption>The same shadow lit from the side.</figcaption>
+</figure>
+
+The engine only knows the object's silhouette from the camera's point of view, so there is no geometry for a shadow to be cast from. It's possible to extend the 2D rendering pipeline to carry volumetric data for each sprite, and use that data with raycasting to get accurate shadows, but at that point you are rebuilding a 3D renderer. It's simpler to start with one.
+
+<figure>
+	<img
+		src={shadow3dCapture.src}
+		width={shadow3dCapture.width}
+		height={shadow3dCapture.height}
+		alt="A 3D mesh casting an accurate shadow."
+	/>
+	<figcaption>The same object as a 3D mesh. The shadow stays correct from any light direction.</figcaption>
+</figure>
+
+## Pixelation
+
+Going 3D loses the pixel art look, so the scene needed pixelating. I had to decide between screen-space pixelation and per-object pixelation.
+
+A standard method is to lower the internal rendering resolution and use a screen-space shader to add outlines and edges, by checking for differences in depth.
+
+<figure>
+	<img
+		src={shadow3dPixelatedCapture.src}
+		width={shadow3dPixelatedCapture.width * 4}
+		height={shadow3dPixelatedCapture.height * 4}
+		alt="A 3D scene rendered at a low resolution with a pixel art shader."
+	/>
+	<figcaption>The 3D scene rendered at a low internal resolution with a screen-space pixel art shader.</figcaption>
+</figure>
+
+This method loses a few things I wanted to keep from the 2D version. Namely, stable pixels, sub-texel movement, and reliable per-sprite outlines. The scene is rasterized at a low resolution every frame, so an object's pixels shift as it moves, and it can only move in whole-pixel steps.
+
+<figure>
+	<img
+		src={movement2dVs3dCapture.src}
+		width={movement2dVs3dCapture.width}
+		height={movement2dVs3dCapture.height}
+		alt="An object moving in 3D with a pixel art shader, and an object moving in 2D."
+	/>
+	<figcaption>Top: Object moving in 3D with a pixel art shader. Bottom: Object moving in 2D.</figcaption>
+</figure>
+
+Reliable per-sprite outlines are difficult to get in screen space, because the shader can't tell which pixel belongs to which object. An object-ID buffer can fix this, but it means juggling IDs, and the number of objects on screen is capped by the buffer's per-pixel size.
+
+So each object has to be its own sprite, placed in the 3D scene. Hand-drawing sprites can get tedious and they carry no 3D information, so the sprites start as 3D models, and a pipeline turns them into 2D pixel sprites. I call them relief sprites.
+
+## Pipeline
+
+### Baking
+
+Take a 3D model and render it with an orthographic camera at a low resolution, pointed down 45 degrees. Add a bit of lighting, which gets baked into the sprite. Also render the depth texture as an RF format .exr image.
+
+<figure>
+	<img
+		src={diffuseAndDepthCapture.src}
+		width={diffuseAndDepthCapture.width * 3}
+		height={diffuseAndDepthCapture.height * 3}
+		alt="The diffuse texture and the depth texture."
+	/>
+	<figcaption>Left: Diffuse texture. Right: Depth texture (inverted for readability).</figcaption>
+</figure>
+
+### Rendering
+
+Create a quad mesh and make it face the camera. The game camera must be orthographic and pointed down 45 degrees as well. A shader on the quad displays the diffuse texture, and uses changes in the depth texture to add outlines and edges.
+
+<figure>
+	<img
+		src={quadMeshCapture.src}
+		width={quadMeshCapture.width}
+		height={quadMeshCapture.height}
+		alt="The quad mesh."
+	/>
+	<figcaption>The quad mesh.</figcaption>
+</figure>
+
+<details style={detailsStyle}>
+<summary>Shader</summary>
+
+```gdshader
+shader_type spatial;
+
+const float ALPHA_THRESHOLD = 0.5;
+const float EDGE_THRESHOLD = 0.3;
+const float OUTLINE_DARKEN = 0.1;
+
+const vec2 NEIGHBOR_OFFSETS[4] = {
+	vec2(0.0, -1.0),
+	vec2(0.0, 1.0),
+	vec2(-1.0, 0.0),
+	vec2(1.0, 0.0)
+};
+
+uniform sampler2D diffuse_texture : filter_nearest, source_color;
+uniform sampler2D depth_texture : filter_nearest;
+
+void fragment() {
+	vec2 texel = 1.0 / vec2(textureSize(diffuse_texture, 0));
+	
+	vec4 color = texture(diffuse_texture, UV);
+	float depth = texture(depth_texture, UV).x;
+	
+	ALBEDO = color.rgb;
+	ALPHA = color.a;
+	ALPHA_SCISSOR_THRESHOLD = ALPHA_THRESHOLD;
+	
+	float min_depth = 1.0 / 0.0; // +inf
+	vec2 min_depth_uv = UV;
+	
+	for (int i = 0; i < 4; i++) {
+		vec2 uv = UV + texel * NEIGHBOR_OFFSETS[i];
+		float d = texture(depth_texture, uv).x;
+		
+		if (!isinf(d) && d < min_depth) {
+			min_depth = d;
+			min_depth_uv = uv;
+		}
+	}
+	
+	bool found_neighbor = !isinf(min_depth);
+	bool is_edge = color.a < ALPHA_THRESHOLD || depth - min_depth > EDGE_THRESHOLD;
+	
+	if (found_neighbor && is_edge) {
+		vec4 neighbor = texture(diffuse_texture, min_depth_uv);
+		ALBEDO = neighbor.rgb * OUTLINE_DARKEN;
+		ALPHA = 1.0;
+	}
+}
+```
+
+</details>
+
+### Adding palettes
+
+In pixel art, palettes create a consistent look. They also matter for lighting. Each material gets a ramp, a row of shades from dark to light, and the hue shifts along it. This is called hue shifting: shadows lean cooler and highlights lean warmer. Plain darkening, which is all a 3D renderer does, gives duller results.
+
+<figure>
+	<img
+		src={paletteOffOnCapture.src}
+		width={paletteOffOnCapture.width * 8}
+		height={paletteOffOnCapture.height * 8}
+		alt="A sprite without a palette next to the same sprite with a palette."
+	/>
+	<figcaption>Left: Sprite without a palette. Right: Sprite with a palette.</figcaption>
+</figure>
+
+The shader needs a way to tell which ramp a pixel belongs to. Give each material on the model a different albedo hue at full saturation. Shading barely changes the hue, so the hue determines the ramp and the value determines the shade within it. I used 12 hues, 30 degrees apart, far apart enough to survive the shading drift. The darkest shade of every ramp is reserved for outlines and edges. An instance uniform per hue, such as `red_material_idx`, holds the ramp's row in the palette texture. Because the sprite stores hue and value instead of final colors, palettes can also be swapped at runtime.
+
+<figure>
+	<img
+		src={paletteSwappingCapture.src}
+		width={paletteSwappingCapture.width}
+		height={paletteSwappingCapture.height}
+		alt="A model colored by hue and the same sprite drawn with different palettes."
+	/>
+	<figcaption>Left: The model, with one hue per ramp. Right: The same sprite drawn with different palettes.</figcaption>
+</figure>
+
+<details style={detailsStyle}>
+<summary>Shader</summary>
+
+```gdshader
+// ...
+
+global uniform int N_HUES;
+global uniform int N_VALUES;
+global uniform sampler2D PALETTE : source_color, filter_nearest;
+
+instance uniform int red_material_idx = -1;
+instance uniform int orange_material_idx = -1;
+instance uniform int yellow_material_idx = -1;
+instance uniform int lime_material_idx = -1;
+instance uniform int green_material_idx = -1;
+instance uniform int mint_material_idx = -1;
+instance uniform int turquoise_material_idx = -1;
+instance uniform int azure_material_idx = -1;
+instance uniform int blue_material_idx = -1;
+instance uniform int purple_material_idx = -1;
+instance uniform int magenta_material_idx = -1;
+instance uniform int pink_material_idx = -1;
+
+vec3 linearToSrgb(vec3 color) {
+	return mix(
+		1.055 * pow(color, vec3(1.0 / 2.4)) - 0.055,
+		color * 12.92,
+		lessThanEqual(color, vec3(0.0031308))
+	);
+}
+
+vec3 rgbToHsv(vec3 c) {
+	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+	vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+	float d = q.x - min(q.w, q.y);
+	float e = 1.0e-10;
+
+	return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+vec3 paletteLookup(vec3 linear_color, bool outline) {
+	vec3 hsv = rgbToHsv(linearToSrgb(linear_color));
+
+	int hue_idx = int(round(hsv.x * float(N_HUES))) % N_HUES;
+	int value_idx = 0;
+
+	if (!outline)
+		value_idx = clamp(int(round(hsv.z * float(N_VALUES))), 2, N_VALUES) - 1;
+
+	int material_idx = {
+		red_material_idx, orange_material_idx, yellow_material_idx,
+		lime_material_idx, green_material_idx, mint_material_idx,
+		turquoise_material_idx, azure_material_idx, blue_material_idx,
+		purple_material_idx, magenta_material_idx, pink_material_idx
+	}[hue_idx];
+
+	if (material_idx == -1)
+		return linear_color;
+
+	return texelFetch(PALETTE, ivec2(value_idx, material_idx), 0).rgb;
+}
+
+void fragment() {
+	// ...
+
+	ALBEDO = paletteLookup(color.rgb, false);
+
+	// ...
+
+	if (found_neighbor && is_edge) {
+		vec4 neighbor = texture(diffuse_texture, min_depth_uv);
+		ALBEDO = paletteLookup(neighbor.rgb, true);
+		ALPHA = 1.0;
+	}
+}
+```
+
+</details>
+
+### Adding dynamic lighting
+
+Render the normal map when baking, and pass it to `NORMAL_MAP` in the shader so the engine's lights respond to the shape of the model.
+
+<figure>
+	<img
+		src={normalCapture.src}
+		width={normalCapture.width * 3}
+		height={normalCapture.height * 3}
+		alt="The normal map texture."
+	/>
+	<figcaption>Normal map texture.</figcaption>
+</figure>
+
+<figure>
+	<img
+		src={normalOffOnCapture.src}
+		width={normalOffOnCapture.width * 8}
+		height={normalOffOnCapture.height * 8}
+		alt="A sprite without normal mapping next to the same sprite with normal mapping."
+	/>
+	<figcaption>Left: Without normal mapping. Right: With normal mapping.</figcaption>
+</figure>
+
+<details style={detailsStyle}>
+<summary>Shader</summary>
+
+```gdshader
+// ...
+
+uniform sampler2D normal_texture : filter_nearest;
+
+// ...
+
+void fragment() {
+	// ...
+
+	NORMAL_MAP = texture(normal_texture, UV).rgb;
+}
+```
+
+</details>
+
+### Adding shadow casting
+
+Place the original model at the same position as the quad and set it to shadows only, so it's invisible and only its shadow can be seen. Disable shadow casting for the quad.
+
+<figure>
+	<img
+		src={shadowMeshCapture.src}
+		width={shadowMeshCapture.width}
+		height={shadowMeshCapture.height}
+		alt="A 3D model and its simplified shadow mesh."
+	/>
+	<figcaption>The object and its (simplified) shadow mesh.</figcaption>
+</figure>
+
+Now the sprites cast an accurate shadow. The shadows, however, are not pixelated and are anti-aliased.
+
+<figure>
+	<img
+		src={shadowSmoothCapture.src}
+		width={shadowSmoothCapture.width}
+		height={shadowSmoothCapture.height}
+		alt="A smooth, anti-aliased shadow."
+	/>
+	<figcaption>The shadow is not pixelated.</figcaption>
+</figure>
+
+To pixelate it, snap the `LIGHT_VERTEX` in the `fragment()` function to the center of the closest texel, and round the attenuation in the `light()` function in the shader. This snaps the shadow to the grid of the receiver and prevents anti-aliasing.
+
+<figure>
+	<img
+		src={shadowPixelatedCapture.src}
+		width={shadowPixelatedCapture.width}
+		height={shadowPixelatedCapture.height}
+		alt="A shadow snapped to the pixel grid."
+	/>
+	<figcaption>The shadow is pixelated.</figcaption>
+</figure>
+
+<details style={detailsStyle}>
+<summary>Shader</summary>
+
+```gdshader
+// Simplified from https://godotshaders.com/shader/texel-space-quantization/
+
+// ...
+
+uniform vec2 texture_size;
+
+// ...
+
+vec2 getScreenDelta(vec2 uv, vec2 tex_size) {
+	vec2 texel_center = (floor(uv * tex_size) + 0.5) / tex_size;
+	vec2 offset = texel_center - uv;
+	
+	mat2 screen_to_uv = mat2(dFdx(uv), dFdy(uv));
+	mat2 uv_to_screen = inverse(screen_to_uv);
+	
+	return uv_to_screen * offset;
+}
+
+vec3 texelSnap(vec3 v, vec2 d) {
+	return v + dFdx(v) * d.x + dFdy(v) * d.y;
+}
+
+void fragment() {
+	// ...
+
+	LIGHT_VERTEX = texelSnap(LIGHT_VERTEX, getScreenDelta(UV, texture_size));
+}
+
+void light() {
+	DIFFUSE_LIGHT += clamp(dot(NORMAL, LIGHT), 0.0, 1.0) * round(ATTENUATION) * LIGHT_COLOR / PI;
+}
+```
+
+</details>
+
+### Adding shadow receiving
+
+When baking, also render a displacement texture, recorded at the corner of each pixel instead of the center. The displacement is the signed distance along the camera's forward direction that a point must move from its position on the flat quad to its position in model space. Subdivide the quad to match the number of vertices and the number of pixels in the displacement texture, and move each vertex by its displacement in the vertex shader. Pad the displacement texture by one pixel to account for the outline pixels.
+
+<figure>
+	<img
+		src={displacingCapture.src}
+		width={displacingCapture.width}
+		height={displacingCapture.height}
+		alt="The vertices of the quad being displaced."
+	/>
+	<figcaption>The sprite being displaced.</figcaption>
+</figure>
+
+<details style={detailsStyle}>
+<summary>Shader</summary>
+
+```gdshader
+// ...
+
+uniform sampler2D displacement_texture : filter_nearest;
+
+// ...
+
+float sampleDisplacement(vec2 uv) {
+	ivec2 coords = ivec2(round(uv * vec2(textureSize(diffuse_texture, 0))));
+	return texelFetch(displacement_texture, coords, 0).x;
+}
+
+void vertex() {
+	float displacement = sampleDisplacement(UV);
+	
+	if (!isnan(displacement))
+		VERTEX.z += displacement;
+}
+
+// ...
+```
+
+</details>
+
+The vertices only move along the orthographic camera's forward direction, so the sprite looks the same, but the engine can now cast shadows onto it accurately. This also allows self-shadowing. If the hidden model shadows the sprite where the two overlap, adjust `shadow_bias` and `shadow_normal_bias` on the lights.
+
+<figure>
+	<img
+		src={displacedShadowCapture.src}
+		width={displacedShadowCapture.width * 8}
+		height={displacedShadowCapture.height * 8}
+		alt="A sprite receiving shadows."
+	/>
+	<figcaption>The sprite receiving shadows.</figcaption>
+</figure>
+
+### Adding animations
+
+The model is baked into a spritesheet, with one cell per animation frame and direction. Each sprite has a direction count, which determines how many directions the model is rendered from, and these form the rows. It also has an animation fps, which sets how many frames are captured per second of animation, and these form the columns. A cell's x coordinate is the animation frame, and its y coordinate is the direction the sprite faces. Because they are independent, a sprite can turn without interrupting its animation.
+
+The shader takes two instance uniforms, `cell_x` and `cell_y`, to select the cell. Play an animation by changing `cell_x`. Set the shadow mesh to the same frame and direction so the shadows match.
+
+<figure>
+	<img
+		src={animatedSpriteCapture.src}
+		width={animatedSpriteCapture.width * 4}
+		height={animatedSpriteCapture.height * 4}
+		alt="A sprite rotating while playing an animation."
+	/>
+	<figcaption>A rotating, animated sprite.</figcaption>
+</figure>
+
+<details style={detailsStyle}>
+<summary>Shader</summary>
+
+```gdshader
+// ...
+
+const ivec2 CELL_SIZE = ivec2(128, 128);
+
+// ...
+
+instance uniform int cell_x;
+instance uniform int cell_y;
+
+vec2 cellUV(vec2 uv, vec2 sheet_size) {
+	vec2 cell_offset = vec2(float(cell_x), float(cell_y)) * vec2(CELL_SIZE);
+	return (uv * vec2(CELL_SIZE) + cell_offset) / sheet_size;
+}
+
+float sampleDisplacement(vec2 uv) {
+	ivec2 cell_offset = ivec2(cell_x, cell_y) * (CELL_SIZE + ivec2(1));
+	ivec2 corner = ivec2(round(uv * vec2(CELL_SIZE)));
+	return texelFetch(displacement_texture, cell_offset + corner, 0).x;
+}
+
+void fragment() {
+	vec2 sheet_size = vec2(textureSize(diffuse_texture, 0));
+	vec2 sheet_uv = cellUV(UV, sheet_size);
+	vec2 texel = 1.0 / sheet_size;
+	
+	vec4 color = texture(diffuse_texture, sheet_uv);
+	float depth = texture(depth_texture, sheet_uv).x;
+	
+	// ...
+	
+	NORMAL_MAP = texture(normal_texture, sheet_uv).rgb;
+}
+```
+
+</details>
+
+## Optimizations
+
+### Shadows
+
+Shadow quality can be dropped to the lowest setting (Hard). This reduces anti-aliasing, which suits this technique anyway. Directional lights can use PSSM 2 Splits instead of PSSM 4 Splits (Orthogonal is too inaccurate). The hidden mesh used to cast shadows only needs vertex positions, so its UVs and normals can be stripped.
+
+### Textures
+
+Every sprite shares the same quad mesh and shader, so the mesh only exists once in VRAM. The textures can be cropped to remove empty space, which requires `cell_position` and `cell_size` uniforms that tell the shader where the sprite sits on the quad.
+
+The outlines and edges can be baked into the diffuse texture, so the depth texture is no longer needed. The diffuse texture can then be reduced from 4 bytes per pixel (RGBA) to 1: one bit for alpha, since I do not need translucency, four bits for hue (I use 12), and three bits for value (I use 8).
+
+The normal's z can be recomputed from x and y, so only those two are stored. Godot already does this. It always ignores z and recomputes it behind the scenes.
+
+```glsl
+// From the Godot source code (https://github.com/godotengine/godot/blob/4.7/drivers/gles3/shaders/scene.glsl#L2357).
+
+// ...
+
+#if defined(NORMAL_MAP_USED)
+	normal_map.xy = normal_map.xy * 2.0 - 1.0;
+	normal_map.z = sqrt(max(0.0, 1.0 - dot(normal_map.xy, normal_map.xy))); //always ignore Z, as it can be RG packed, Z may be pos/neg, etc.
+
+// ...
+```
+
+This gives one RGB texture with the normal's x in the red channel, the normal's y in the green channel, and the diffuse byte takes the place of the normal's z in the blue channel. It can be passed directly to `NORMAL_MAP`, and must be imported without compression. The displacement texture can use half-precision floats, which halves its size with a negligible difference.
+
+Together, these took the VRAM of an animated sprite with 65×8 cells from 122.37 MiB to 4.77 MiB, a 96.1% reduction.
+
+<figure>
+	<img
+		src={optimizationVramCrop.src}
+		width={optimizationVramCrop.width}
+		height={optimizationVramCrop.height}
+		alt="VRAM usage before and after optimization."
+	/>
+	<figcaption>Top: VRAM usage of the animated sprite before optimization (128×128 pixels per cell). Bottom: VRAM usage of the animated sprite after optimization (44×43 pixels per cell).</figcaption>
+</figure>
+
+## Limitations
+
+The relief sprites only work when viewed by an orthographic camera that faces them directly.
+
+The quad has a fixed size, so it is wasteful for small objects, and incapable of supporting objects that exceed its bounds. It is possible to overcome this by using smaller quads and tiling them.
+
+The baking can take a long time depending on the number of animations and directions of the model. I mitigated this by writing a minimal CPU rasterizer as a Godot plugin that renders the model from plain data (vertices, UVs, etc.) instead of going through the engine. This accomplishes two things. First, it allows rendering the model at any direction and animation without having to actually mutate the model. Second, every cell is independent so the baking can be parallelized. In theory, all cells could be baked at once, but in practice it is limited by the number of CPU cores, among other things. Even so, this made things around 8 times faster.
+
+## Conclusion
+
+The result is a 2D pixel art style with 3D effects. Sprites have real depth, so depth of field, fog, and 3D particles work with them without extra setup. The 3D models are rendered at a low resolution, and the 2D look comes from the palette and outlines applied by the shader. This means neither pixel art skill nor detailed 3D modeling is needed to get a cohesive visual style.
+
+<figure>
+	<img
+		src={showcaseCapture.src}
+		width={showcaseCapture.width * 2}
+		height={showcaseCapture.height * 2}
+		alt="A scene combining relief sprites with 3D lighting, shadows, particles, and depth of field."
+	/>
+	<figcaption>A scene combining relief sprites with 3D lighting, shadows, particles, and depth of field.</figcaption>
+</figure>
+
+<details style={detailsStyle}>
+<summary>Final shader</summary>
+
+```gdshader
+shader_type spatial;
+
+const vec3 ERROR_COLOR = vec3(1.0, 0.0, 0.5);
+
+global uniform sampler2D PALETTE : source_color, filter_nearest;
+global uniform ivec2 QUAD_PIXELS_SIZE; // Size of the quad mesh in pixels
+
+uniform sampler2D data_texture : filter_nearest;
+uniform sampler2D displacement_texture : filter_nearest;
+
+uniform ivec2 cell_position;
+uniform ivec2 cell_size;
+
+instance uniform int red_material_idx = -1;
+instance uniform int orange_material_idx = -1;
+instance uniform int yellow_material_idx = -1;
+instance uniform int lime_material_idx = -1;
+instance uniform int green_material_idx = -1;
+instance uniform int mint_material_idx = -1;
+instance uniform int turquoise_material_idx = -1;
+instance uniform int azure_material_idx = -1;
+instance uniform int blue_material_idx = -1;
+instance uniform int purple_material_idx = -1;
+instance uniform int magenta_material_idx = -1;
+instance uniform int pink_material_idx = -1;
+
+instance uniform int cell_x;
+instance uniform int cell_y;
+
+vec2 quadUVToCellUV(vec2 model_uv) {
+	vec2 uv_top_left = vec2(cell_position) / vec2(QUAD_PIXELS_SIZE);
+	vec2 uv_bottom_right = (vec2(cell_position) + vec2(cell_size)) / vec2(QUAD_PIXELS_SIZE);
+	
+	return (model_uv - uv_top_left) / (uv_bottom_right - uv_top_left);
+}
+
+bool isCellUVOutOfBounds(vec2 cell_uv) {
+	return cell_uv.x < 0.0 || cell_uv.y < 0.0 || cell_uv.x > 1.0 || cell_uv.y > 1.0;
+}
+
+vec3 sampleData(vec2 cell_uv) {
+	vec2 cell_size_uv = vec2(cell_size) / vec2(textureSize(data_texture, 0));
+	vec2 cell_uv_offset = vec2(float(cell_x), float(cell_y)) * cell_size_uv;
+	vec2 data_uv = cell_uv * cell_size_uv + cell_uv_offset;
+	
+	return texture(data_texture, data_uv).rgb;
+}
+
+float sampleDisplacement(vec2 cell_uv) {
+	ivec2 local_texel = ivec2(round(cell_uv * vec2(cell_size)));
+	ivec2 cell_offset = ivec2(cell_x, cell_y) * (cell_size + ivec2(1));
+	
+	return texelFetch(displacement_texture, cell_offset + local_texel, 0).x;
+}
+
+void vertex() {
+	vec2 cell_uv = quadUVToCellUV(UV);
+	
+	if (!isCellUVOutOfBounds(cell_uv)) {
+		float displacement = sampleDisplacement(cell_uv);
+		
+		if (!isnan(displacement))
+			VERTEX.z += displacement;
+	}
+}
+
+vec3 getPaletteColor(int material_idx, int value_idx) {
+	return texelFetch(PALETTE, ivec2(value_idx, material_idx), 0).rgb;
+}
+
+vec3 texelSnap(vec3 v, vec2 uv, vec2 tex_size) {
+	vec2 texel_center = (floor(uv * tex_size) + 0.5) / tex_size;
+	vec2 offset = texel_center - uv;
+	
+	mat2 screen_to_uv = mat2(dFdx(uv), dFdy(uv));
+	mat2 uv_to_screen = inverse(screen_to_uv);
+	
+	vec2 d = uv_to_screen * offset;
+	
+	return v + dFdx(v) * d.x + dFdy(v) * d.y;
+}
+
+void fragment() {
+	ALPHA_SCISSOR_THRESHOLD = 1.0;
+	
+	vec2 cell_uv = quadUVToCellUV(UV);
+	LIGHT_VERTEX = texelSnap(VERTEX, cell_uv, vec2(cell_size));
+	
+	if (isCellUVOutOfBounds(cell_uv)) {
+		discard;
+	} else {
+		vec3 data = sampleData(cell_uv);
+		int diffuse_u8 = int(round(data.b * 255.0));
+		
+		int hue_idx = (diffuse_u8 >> 3) & 15;
+		int value_idx = diffuse_u8 & 7;
+		
+		int material_idx = {
+			red_material_idx, orange_material_idx, yellow_material_idx,
+			lime_material_idx, green_material_idx, mint_material_idx,
+			turquoise_material_idx, azure_material_idx, blue_material_idx,
+			purple_material_idx, magenta_material_idx, pink_material_idx
+		}[hue_idx];
+		
+		NORMAL_MAP = data;
+		ALBEDO = material_idx == -1 ? ERROR_COLOR : getPaletteColor(material_idx, value_idx);
+		ALPHA = float(diffuse_u8 >> 7);
+	}
+}
+
+void light() {
+	DIFFUSE_LIGHT += clamp(dot(NORMAL, LIGHT), 0.0, 1.0) * round(ATTENUATION) * LIGHT_COLOR / PI;
+}
+```
+
+</details>
