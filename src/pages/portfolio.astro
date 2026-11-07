@@ -1,0 +1,127 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+
+import reliefSpritesImage from '../assets/portfolio/relief_sprites.png';
+import match3VfxDemo from '../assets/portfolio/match_3_vfx_demo.png';
+import thrillerImage from '../assets/portfolio/thriller.png';
+import scaleFactorImage from '../assets/portfolio/scale_factor.png';
+
+const projects = [
+	{
+		title: 'Relief Sprites',
+		subtitle: 'Novel technique for rendering 2D sprites in 3D',
+		url: 'https://juwayen.github.io/blog/striking-the-balance-between-2d-and-3d-pixel-art/',
+		image: reliefSpritesImage,
+	},
+	{
+		title: 'Match-3 VFX Demo',
+		subtitle: 'Breakdown of common match-3 VFX with a playable web build',
+		url: 'https://juwayen.artstation.com/projects/QxKVGx',
+		image: match3VfxDemo,
+	},
+	{
+		title: 'Thriller',
+		subtitle: 'Entry for Mini Jam 218 (placed 4th)',
+		url: 'https://itch.io/jam/mini-jam-218-fire/rate/4957351',
+		image: thrillerImage,
+	},
+	{
+		title: 'scale_factor',
+		subtitle: 'Entry for GMTK Game Jam 2024 (placed top 1%)',
+		url: 'https://itch.io/jam/gmtk-2024/rate/2908003',
+		image: scaleFactorImage,
+	},
+];
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={`Portfolio | ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
+		<style>
+			main {
+				width: 992px;
+			}
+			ul {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 2rem;
+				list-style-type: none;
+				margin: 0;
+				padding: 0;
+			}
+			ul li {
+				width: 480px;
+			}
+			ul li * {
+				text-decoration: none;
+				transition: 0.2s ease;
+			}
+			ul li img {
+				image-rendering: pixelated;
+				margin-bottom: 0.5rem;
+				border-radius: 12px;
+			}
+			ul li a {
+				display: block;
+			}
+			.title {
+				font-size: 1.563rem;
+				margin: 0;
+				color: rgb(var(--black));
+				line-height: 1;
+			}
+			ul li a:hover h4 {
+				color: rgb(var(--accent));
+			}
+			ul a:hover img {
+				box-shadow: var(--box-shadow);
+			}
+			@media (max-width: 720px) {
+				ul {
+					gap: 0.5em;
+				}
+				ul li {
+					width: 100%;
+					text-align: center;
+				}
+			}
+            .subtitle {
+                margin: 0;
+                color: rgb(var(--gray));
+                line-height: 1.3;
+            }
+			ul li a:hover h4,
+			ul li a:hover .subtitle {
+				color: rgb(var(--accent));
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main>
+			<section>
+				<ul>
+					{projects.map((project) => (
+						<li>
+							<a href={project.url} target="_blank" rel="noopener noreferrer">
+								<img
+									src={project.image.src}
+									width={project.image.width}
+									height={project.image.height}
+									alt={project.title}
+								/>
+								<h4 class="title">{project.title}</h4>
+                                <p class="subtitle">{project.subtitle}</p>
+							</a>
+						</li>
+					))}
+				</ul>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>
